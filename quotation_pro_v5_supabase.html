@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>QuoteBuilder Pro — iSAT</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0d0f14; --panel:#13161e; --card:#1a1e28; --border:#252a38;
+  --blue:#3b82f6; --blue2:#1d4ed8; --sky:#60a5fa;
+  --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --purple:#a78bfa;
+  --text:#e8ecf5; --muted:#6b7694; --faint:#2a2f42;
+  --inp:#0d0f14; --r:8px;
+  --font:'Lato',sans-serif; --mono:'JetBrains Mono',monospace; --display:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+
+/* ── TOPBAR ── */
+.topbar{height:52px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;z-index:100}
+.topbar .logo{font-family:var(--display);font-weight:800;font-size:17px;color:var(--text);letter-spacing:-.3px}
+.topbar .logo span{color:var(--blue)}
+.topbar-sep{width:1px;height:24px;background:var(--border)}
+.topbar-nav{display:flex;gap:2px}
+.tnav{background:none;border:none;padding:6px 12px;border-radius:6px;font-family:var(--font);font-size:13px;color:var(--muted);cursor:pointer;transition:.15s}
+.tnav:hover{background:var(--faint);color:var(--text)}
+.tnav.active{background:var(--blue);color:#fff}
+.topbar-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.chip{font-family:var(--mono);font-size:10px;background:var(--faint);color:var(--muted);padding:3px 8px;border-radius:20px;letter-spacing:.5px}
+
+/* ── LAYOUT ── */
+.workspace{display:flex;flex:1;overflow:hidden}
+.sidebar{width:260px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;overflow-y:auto;padding:24px;background:var(--bg)}
+
+/* ── SIDEBAR ── */
+.sidebar-section{padding:14px 16px 8px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.sidebar-items{overflow-y:auto;flex:1}
+.sq-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:.12s;border-left:3px solid transparent}
+.sq-item:hover{background:var(--faint)}
+.sq-item.active{background:var(--faint);border-left-color:var(--blue)}
+.sq-item-icon{font-size:16px;flex-shrink:0}
+.sq-item-info{flex:1;min-width:0}
+.sq-item-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sq-item-meta{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.sq-item-badge{font-size:10px;padding:2px 7px;border-radius:10px;font-family:var(--mono);flex-shrink:0}
+.badge-draft{background:#1e293b;color:var(--sky)}
+.badge-done{background:#14532d;color:var(--green)}
+.btn-new-quote{margin:12px 16px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:10px;font-family:var(--display);font-weight:700;font-size:13px;cursor:pointer;width:calc(100% - 32px);transition:.15s}
+.btn-new-quote:hover{background:var(--blue2)}
+
+/* ── VIEWS ── */
+.view{display:none}
+.view.active{display:block}
+
+/* ── EMPTY STATE ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;gap:16px;color:var(--muted);text-align:center}
+.empty-icon{font-size:56px;opacity:.3}
+.empty-title{font-family:var(--display);font-weight:700;font-size:20px;color:var(--text);opacity:.5}
+.empty-sub{font-size:14px;max-width:320px;line-height:1.7}
+.btn-start{background:var(--blue);color:#fff;border:none;border-radius:var(--r);padding:12px 28px;font-family:var(--display);font-weight:700;font-size:14px;cursor:pointer;margin-top:8px;transition:.15s}
+.btn-start:hover{background:var(--blue2);transform:translateY(-1px)}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.card-title{font-family:var(--display);font-weight:700;font-size:14px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .icon{font-size:18px}
+
+/* ── GRID ── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px}
+
+/* ── FORM FIELDS ── */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase}
+.field input,.field select,.field textarea{background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:9px 11px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;transition:.15s;width:100%}
+.field input:focus,.field select,.field textarea:focus{border-color:var(--blue)}
+.field select{cursor:pointer}
+.field select option{background:var(--card)}
+.field textarea{resize:vertical;min-height:90px;line-height:1.6;font-size:13px}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:none;border-radius:6px;font-family:var(--font);font-size:13px;font-weight:700;cursor:pointer;transition:.15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue2)}
+.btn-ghost{background:var(--faint);color:var(--text)}.btn-ghost:hover{background:var(--border)}
+.btn-danger{background:#7f1d1d;color:var(--red)}.btn-danger:hover{background:#991b1b}
+.btn-green{background:#14532d;color:var(--green)}.btn-green:hover{background:#166534}
+.btn-amber{background:#78350f;color:var(--amber)}.btn-amber:hover{background:#92400e}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn.loading{opacity:.6;pointer-events:none}
+
+/* ── SECTION BLOCKS ── */
+.scope-block{border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.scope-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--faint);cursor:pointer;user-select:none}
+.scope-ref{font-family:var(--mono);font-size:10px;background:var(--blue);color:#fff;padding:3px 8px;border-radius:4px;flex-shrink:0}
+.scope-lbl{font-weight:700;font-size:13px;flex:1}
+.scope-cnt{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.chevron{color:var(--muted);transition:.2s;font-size:14px}
+.scope-block.closed .chevron{transform:rotate(-90deg)}
+.scope-block.closed .scope-body{display:none}
+.scope-body{padding:12px 14px}
+
+/* ── LINE ITEM ── */
+.item-hdr{display:grid;grid-template-columns:1fr 70px 110px 110px 34px;gap:8px;margin-bottom:6px}
+.item-hdr span{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+.item-hdr span:nth-child(3),.item-hdr span:nth-child(4){text-align:right}
+.line-item{display:grid;grid-template-columns:1fr 70px 110px 110px 34px;gap:8px;margin-bottom:6px;animation:fadeUp .15s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(-3px)}to{opacity:1}}
+.line-item select,.line-item input[type=number]{background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;transition:.12s;width:100%}
+.line-item select:focus,.line-item input:focus{border-color:var(--blue)}
+.line-item select option{background:var(--card)}
+.price-cell{background:var(--faint);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:12px;color:var(--muted);text-align:right}
+.price-cell.active{color:var(--sky)}
+.btn-del-item{background:none;border:1px solid var(--border);border-radius:6px;width:34px;height:34px;cursor:pointer;color:var(--muted);font-size:13px;display:flex;align-items:center;justify-content:center;transition:.12s}
+.btn-del-item:hover{border-color:var(--red);color:var(--red)}
+.btn-add-row{background:none;border:1px dashed var(--border);border-radius:6px;padding:7px;width:100%;font-size:12px;color:var(--muted);cursor:pointer;margin-top:4px;transition:.12s}
+.btn-add-row:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ── SITE TABS ── */
+.site-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.stab{background:var(--faint);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);transition:.12s;white-space:nowrap}
+.stab:hover{border-color:var(--blue);color:var(--sky)}
+.stab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.stab-add{background:none;border:1px dashed var(--border);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;transition:.12s}
+.stab-add:hover{border-color:var(--green);color:var(--green)}
+
+/* ── TOTALS ── */
+.totals-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:16px;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-top:16px}
+.tot-item label{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.8px;display:block;margin-bottom:4px;text-transform:uppercase}
+.tot-item .val{font-family:var(--mono);font-size:15px;color:var(--text);font-weight:500}
+.tot-item.grand .val{font-size:20px;color:var(--amber)}
+.export-btns{display:flex;gap:8px;flex-direction:column}
+
+/* ── UPLOAD ZONE ── */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;transition:.2s;background:var(--inp)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:rgba(59,130,246,.05)}
+.upload-zone .uz-icon{font-size:32px;margin-bottom:8px;opacity:.5}
+.upload-zone .uz-text{font-size:13px;color:var(--muted)}
+.upload-zone .uz-hint{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--mono)}
+input[type=file]{display:none}
+
+/* ── AI RESPONSE BOX ── */
+.ai-box{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:var(--r);padding:14px 16px;margin-top:12px;display:none}
+.ai-box.show{display:block}
+.ai-box-title{font-family:var(--mono);font-size:10px;color:var(--sky);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase}
+.ai-box-text{font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;max-height:200px;overflow-y:auto}
+
+/* ── SAVED QUOTES LIST ── */
+.sq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.sq-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;cursor:pointer;transition:.15s;position:relative;overflow:hidden}
+.sq-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--blue)}
+.sq-card:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:0 8px 24px rgba(59,130,246,.15)}
+.sq-card.done::before{background:var(--green)}
+.sq-card-name{font-family:var(--display);font-weight:700;font-size:15px;margin-bottom:4px}
+.sq-card-meta{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:10px}
+.sq-card-total{font-family:var(--mono);font-size:16px;color:var(--amber);font-weight:500}
+.sq-card-actions{display:flex;gap:6px;margin-top:12px}
+
+/* ── PROGRESS BAR ── */
+.progress-wrap{background:var(--faint);border-radius:4px;height:4px;overflow:hidden;margin-top:4px}
+.progress-bar{height:100%;background:var(--blue);border-radius:4px;transition:width .3s}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:12px 18px;border-radius:var(--r);font-size:13px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:9999;transform:translateY(60px);opacity:0;transition:.3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:var(--green);color:var(--green)}
+.toast.err{border-color:var(--red);color:var(--red)}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:pop .2s ease}
+@keyframes pop{from{transform:scale(.95);opacity:0}to{transform:scale(1);opacity:1}}
+.modal h3{font-family:var(--display);font-weight:700;font-size:18px;margin-bottom:20px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">Quote<span>Builder</span> Pro</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-nav">
+    <button class="tnav active" onclick="showView('quotes')">📋 Quotations</button>
+    <button class="tnav" onclick="showView('boq')">📦 BOQ Manager</button>
+    <button class="tnav" onclick="showView('settings')">⚙ Settings</button>
+    <button class="tnav" id="tnav_summary" onclick="openSummaryView()" style="display:none">📊 Summary</button>
+  </div>
+  <div class="topbar-right">
+    <div id="sync_dot" title="Cloud sync status" style="width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;margin-right:4px;transition:.3s" title="Not connected"></div>
+    <div class="chip" id="company_chip" contenteditable="true" spellcheck="false" title="Click to edit" style="cursor:text;outline:none;min-width:80px" onblur="localStorage.setItem('company_chip',this.textContent)">iSAT AFRICA · ZMW</div>
+  </div>
+</div>
+
+<div class="workspace">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <button class="btn-new-quote" onclick="newQuote()">＋ New Quotation</button>
+  <div class="sidebar-section">Recent Quotations</div>
+  <div class="sidebar-items" id="sidebar_list"></div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="main_area">
+
+  <!-- VIEW: QUOTES LIST -->
+  <div class="view active" id="view_quotes">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:var(--display);font-size:22px;font-weight:800">Quotations</div>
+      <button class="btn btn-primary" onclick="newQuote()">＋ New Quotation</button>
+    </div>
+    <div id="quotes_grid" class="sq-grid"></div>
+    <div id="quotes_empty" class="empty-state" style="display:none">
+      <div class="empty-icon">📄</div>
+      <div class="empty-title">No quotations yet</div>
+      <div class="empty-sub">Create your first quotation by clicking the button above. You can upload an RFP PDF and let AI fill everything in.</div>
+      <button class="btn-start" onclick="newQuote()">Create First Quotation</button>
+    </div>
+  </div>
+
+  <!-- VIEW: EDITOR -->
+  <div class="view" id="view_editor">
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button class="btn btn-ghost btn-sm" onclick="showView('quotes')">← Back</button>
+      <div style="font-family:var(--display);font-size:20px;font-weight:800;flex:1" id="editor_title">New Quotation</div>
+      <button class="btn btn-amber btn-sm" onclick="saveQuote()">💾 Save</button>
+      <button class="btn btn-ghost btn-sm" onclick="openSummaryView()">📊 Summary</button>
+      <button class="btn btn-ghost btn-sm" onclick="markDone()">✓ Mark Done</button>
+      <button class="btn btn-green btn-sm" onclick="exportExcel()">⬇ Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 PDF</button>
+    </div>
+
+    <!-- Project Info -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> Project Information</div>
+      <div class="grid4" style="margin-bottom:12px">
+        <div class="field"><label>Client</label><input id="f_client" placeholder="Client name"></div>
+        <div class="field"><label>RFP Reference</label><input id="f_ref" placeholder="REF-2026-XX"></div>
+        <div class="field"><label>Date</label><input id="f_date" type="date"></div>
+        <div class="field"><label>Validity (days)</label><input id="f_validity" type="number" value="30"></div>
+      </div>
+      <div class="grid3">
+        <div class="field"><label>Project Name</label><input id="f_project" placeholder="Project description"></div>
+        <div class="field"><label>VAT Rate (%)</label><input id="f_vat" type="number" value="16" step="0.5"></div>
+        <div class="field"><label>Status</label>
+          <select id="f_status"><option value="draft">Draft</option><option value="done">Final</option></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- RFP Upload + AI -->
+    <div class="card">
+      <div class="card-title"><span class="icon">✦</span> AI Auto-Complete from RFP</div>
+      <div class="grid2" style="gap:16px">
+        <div>
+          <div class="upload-zone" id="rfp_zone" onclick="document.getElementById('rfp_file').click()"
+            ondragover="e.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')"
+            ondrop="handleRFPDrop(event)">
+            <div class="uz-icon">📄</div>
+            <div class="uz-text">Upload RFP PDF</div>
+            <div class="uz-hint">Click or drag & drop • PDF files</div>
+          </div>
+          <input type="file" id="rfp_file" accept=".pdf" onchange="handleRFPFile(this)">
+          <div id="rfp_name" style="font-family:var(--mono);font-size:11px;color:var(--sky);margin-top:8px;display:none"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:10px;justify-content:center" id="btn_analyze" onclick="analyzeRFP()" disabled>
+            <span id="ai_spin" style="display:none">⟳ </span>✦ Analyze PDF & Auto-Fill
+          </button>
+          <div class="progress-wrap" id="ai_prog_wrap" style="display:none">
+            <div class="progress-bar" id="ai_prog" style="width:0%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="field" style="margin-bottom:10px">
+            <label>Or paste RFP scope text</label>
+            <textarea id="rfp_text" placeholder="Paste scope of work text here..."></textarea>
+          </div>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="analyzeText()">✦ Analyze Text</button>
+        </div>
+      </div>
+      <div class="ai-box" id="ai_response">
+        <div class="ai-box-title">✦ AI Analysis</div>
+        <div class="ai-box-text" id="ai_response_text"></div>
+      </div>
+    </div>
+
+    <!-- Sites -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px"><span class="icon">📍</span> Sites</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('km_file').click()">⬆ Upload KM File</button>
+          <input type="file" id="km_file" accept=".csv,.xlsx,.xls" onchange="handleKMFile(this)" style="display:none">
+          <button class="btn btn-ghost btn-sm" onclick="addSite()">＋ Add Site</button>
+        </div>
+      </div>
+      <div id="sites_table"></div>
+    </div>
+
+    <!-- Scope Sections -->
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px"><span class="icon">🔧</span> Scope & Line Items</div>
+        <button class="btn btn-ghost btn-sm" onclick="addScope()">＋ Add Scope Section</button>
+      </div>
+
+      <!-- Site tabs -->
+      <div class="site-tabs" id="site_tabs_line">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center">Viewing:</span>
+      </div>
+
+      <div id="scope_sections"></div>
+    </div>
+
+    <!-- Totals -->
+    <div class="totals-row" id="totals_row">
+      <div class="tot-item">
+        <label>Subtotal (VAT Excl.)</label>
+        <div class="val" id="t_sub">ZMW 0.00</div>
+      </div>
+      <div class="tot-item">
+        <label>VAT</label>
+        <div class="val" id="t_vat_val">ZMW 0.00</div>
+      </div>
+      <div class="tot-item grand">
+        <label>Grand Total (VAT Incl.)</label>
+        <div class="val" id="t_grand">ZMW 0.00</div>
+      </div>
+      <div class="export-btns">
+        <button class="btn btn-green btn-sm" onclick="exportExcel()">⬇ Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: BOQ MANAGER -->
+  <div class="view" id="view_boq">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:var(--display);font-size:22px;font-weight:800">BOQ Manager</div>
+      <button class="btn btn-primary" onclick="addBOQCategory()">＋ Add Category</button>
+    </div>
+    <div id="boq_content"></div>
+  </div>
+
+  <!-- VIEW: SETTINGS -->
+  <div class="view" id="view_settings">
+    <div style="font-family:var(--display);font-size:22px;font-weight:800;margin-bottom:20px">Settings</div>
+    <div class="card">
+      <div class="card-title">Company Info</div>
+      <div class="grid2">
+        <div class="field"><label>Company Name</label><input id="s_company" value="Your Company Name"></div>
+        <div class="field"><label>Default VAT (%)</label><input id="s_vat" type="number" value="16"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">☁ Supabase Database</div>
+      <div style="margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.7">
+        Connect to Supabase for cloud sync across all devices. Get your free credentials at
+        <a href="https://supabase.com" target="_blank" style="color:var(--sky)">supabase.com</a>
+        → Settings → API.
+      </div>
+      <div class="grid2" style="margin-bottom:12px">
+        <div class="field"><label>Supabase Project URL</label>
+          <input id="s_sb_url" placeholder="https://xxxx.supabase.co"
+            oninput="localStorage.setItem('sb_url',this.value)"></div>
+        <div class="field"><label>Supabase Anon Key</label>
+          <input id="s_sb_key" placeholder="eyJhbGc..." type="password"
+            oninput="localStorage.setItem('sb_key',this.value)"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn btn-primary" onclick="initSupabase(true)">🔌 Connect</button>
+        <button class="btn btn-ghost" onclick="syncAll()">⟳ Sync All Now</button>
+        <button class="btn btn-ghost" onclick="pullFromCloud()">⬇ Pull from Cloud</button>
+        <div id="sb_status" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:8px"></div>
+      </div>
+      <div id="sb_log" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:10px;max-height:80px;overflow-y:auto;line-height:1.8"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Data Management</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="exportAllData()">⬇ Export All Data (JSON)</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('import_file').click()">⬆ Import Data</button>
+        <input type="file" id="import_file" accept=".json" onchange="importData(this)" style="display:none">
+        <button class="btn btn-danger" onclick="clearAllData()">🗑 Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- VIEW: SUMMARY -->
+  <div class="view" id="view_summary">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-family:var(--display);font-size:22px;font-weight:800" id="sum_title">Summary</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="showView('editor')">← Back to Editor</button>
+        <button class="btn btn-green btn-sm" onclick="exportExcel()">⬇ Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 PDF</button>
+      </div>
+    </div>
+
+    <!-- Project info bar -->
+    <div id="sum_info" class="card" style="margin-bottom:16px"></div>
+
+    <!-- Per-site summary tables -->
+    <div id="sum_sites"></div>
+
+    <!-- Grand totals -->
+    <div id="sum_grand" class="card" style="margin-top:16px"></div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /workspace -->
+
+<!-- Modal: Add Scope -->
+<div class="modal-overlay" id="modal_scope">
+  <div class="modal">
+    <h3>Add Scope Section</h3>
+    <div class="field" style="margin-bottom:12px">
+      <label>Scope Reference (e.g. §3.5)</label>
+      <input id="m_ref" placeholder="§3.x">
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Section Label</label>
+      <input id="m_label" placeholder="RAN Equipment Installation">
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>BOQ Category</label>
+      <select id="m_cat"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal_scope')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddScope()">Add Section</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Site -->
+<div class="modal-overlay" id="modal_site">
+  <div class="modal">
+    <h3>Add Site</h3>
+    <div class="field" style="margin-bottom:12px"><label>Site Name</label><input id="ms_name" placeholder="SITE_NAME"></div>
+    <div class="field" style="margin-bottom:12px"><label>Province</label><input id="ms_prov" placeholder="Province"></div>
+    <div class="field" style="margin-bottom:12px"><label>Distance from Lusaka (km)</label><input id="ms_km" type="number" value="0"></div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Location</label>
+      <select id="ms_loc"><option>Out of Lusaka</option><option>In Lusaka (Capital)</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal_site')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddSite()">Add Site</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// PRICE DATABASE
+// ══════════════════════════════════════════
+const DEFAULT_BOQ = {
+  "Survey":[
+    ["Site Survey Without Climbing Tower, per Site","Site",1939.69,4738.59],
+    ["Wireless Site Survey With Climbing Tower, per Site","Site",2497.38,5243.33],
+    ["Microwave Site Survey With Climbing Tower, per Hop","Hop",2964.63,5833.89],
+    ["MW LOS Survey With Climbing Tower, per Hop","Hop",3022.48,6637.65],
+    ["Co-site Survey MW With Report, per Site","Site",2652.57,4813.13],
+    ["Additional Site Visit, per Site","Site",2765.62,5508.41],
+    ["Additional Site Visit Same Region, per Site","Site",1049.06,1925.51],
+  ],
+  "BBU":[
+    ["BBU Installation, per Site","Site",1278.31,1379.70],
+    ["BBU Board Expansion, per Site","Site",741.67,836.21],
+    ["BBU Board Dismantlement, per Site","Site",1133.94,1264.17],
+  ],
+  "RRU/AAU":[
+    ["1 RRU Installation on Tower, per Site","Site",3205.27,4058.49],
+    ["2-3 RRU Installation on Tower, per Site","Site",5193.88,7094.67],
+    ["4-6 RRU Installation on Tower, per Site","Site",7279.71,9285.66],
+    ["7-9 RRU Installation on Tower, per Site","Site",8980.98,11476.66],
+    ["10-12 RRU Installation on Tower, per Site","Site",10682.25,13667.66],
+    ["1 AAU Installation on Tower, per Site","Site",4576.68,5873.98],
+    ["2-3 AAU Installation on Tower, per Site","Site",7229.85,9828.20],
+    ["2-3 RRU Installation not on Tower, per Site","Site",4857.41,6296.59],
+    ["1 RRU Replacement, per Site","Site",4453.28,5726.87],
+    ["2-3 RRU Replacement, per Site","Site",6232.65,8513.60],
+    ["2-3 RRU Dismantlement, per Site","Site",3784.92,4878.26],
+    ["1 RRU Dismantlement, per Site","Site",2611.06,3255.21],
+    ["Site Box Equipment (1-5U) Installation, per Pcs","PCS",2492.57,3210.07],
+    ["MD00002 DBS RRU 2-3pcs + Antenna 2-3pcs, per Site","Site",9819.85,12852.42],
+    ["MD00003 DBS RRU 4-6pcs + Antenna 2-3pcs, per Site","Site",11801.39,14933.87],
+    ["MD00006 DBS AAU 2-3pcs + Antenna 2-3pcs, per Site","Site",11754.03,15449.28],
+  ],
+  "Antenna":[
+    ["1 Antenna Installation, per Site","Site",3043.20,3610.35],
+    ["2-3 Antenna Installation, per Site","Site",3864.50,5054.50],
+    ["1 Antenna Replacement, per Site","Site",3114.65,4055.19],
+    ["2-3 Antenna Replacement, per Site","Site",4870.93,6402.37],
+    ["1 Antenna Dismantlement, per Site","Site",2199.82,2850.00],
+    ["2-3 Antenna Dismantlement, per Site","Site",2964.05,3868.89],
+    ["1 Antenna Pole Installation, per Site","Site",2831.56,3943.79],
+    ["2-3 Antenna Pole Installation, per Site","Site",3775.41,5258.39],
+    ["Omni-Antenna Rural Site, per Site","Site",4247.34,5915.69],
+    ["1 Antenna Relocation, per Site","Site",4083.06,5258.39],
+  ],
+  "Passive/Feeder":[
+    ["Feeder Installation, per Pair","Pair",959.84,1253.94],
+    ["Feeder Dismantlement, per Pair","Pair",640.49,837.04],
+    ["Feeder Loss Measurement, per Site","Site",997.03,1388.66],
+    ["GPS Installation, per Site","Site",531.75,740.62],
+    ["RET/AISU Replacement, per Site","Site",598.22,833.20],
+    ["RRU Fiber/Power Cable Replacement, per Site","Site",2077.14,2893.04],
+    ["VSWR Test, per PCS","PCS",223.73,274.13],
+  ],
+  "Power":[
+    ["Power Cabinet Installation, per Pcs","PCS",2785.37,3618.03],
+    ["Power Lithium Battery -48V, per Pcs","PCS",1210.71,1595.42],
+    ["Power Battery 12V 4pcs per Set","SET",5404.66,7140.12],
+    ["Power Battery 2V 24pcs per Set","SET",5798.53,7628.06],
+    ["Power System Dismantlement, per Pcs","PCS",3988.11,5554.64],
+  ],
+  "OSS/Integration":[
+    ["Core Switch Node Patch Cord Alarm Clearance Acceptance, per Site","Site",3294.36,4343.95],
+    ["Box Node Patch Cord Connection Acceptance, per Site","Site",1547.00,2036.01],
+    ["Core Switch Room Cabinet Installation, per Pcs","PCS",2807.56,3818.31],
+    ["PDF/ODF Rack Installation, per Pcs","PCS",1495.54,2082.99],
+    ["Box Equipment (1-5U) Dismantlement, per Pcs","PCS",601.62,818.23],
+  ],
+  "RF Test":[
+    ["SSV Test & Report 1 Technology, per Site","Site",3179.71,3661.12],
+    ["SSV Test & Report 2 Technologies, per Site","Site",3651.78,4040.43],
+    ["SSV Test & Report 3 Technologies, per Site","Site",4124.40,4492.01],
+    ["SSV Test & Report 4 Technologies, per Site","Site",4585.93,5181.61],
+    ["SSV Test Only 2 Technologies, per Site","Site",2127.88,2618.48],
+    ["Indoor Walk Test SSV & Report, per Site","Site",4434.48,5752.34],
+  ],
+  "Microwave (HW)":[
+    ["MW ODU/RFU Installation, per Hop","Hop",2492.57,3355.78],
+    ["MW IDU & Accessories Installation, per Hop","Hop",787.76,996.12],
+    ["MW Antenna 0.3/0.6m Installation, per Pcs","PCS",1510.50,2033.60],
+    ["MW Antenna 0.9/1.2m Installation, per Pcs","PCS",2014.00,2711.47],
+    ["MW Antenna 1.8m Installation, per Pcs","PCS",2517.50,3389.34],
+    ["MW Antenna 0.3/0.6m Alignment, per Pair","Pair",2653.28,3433.63],
+    ["MW Antenna 0.9/1.2m Alignment, per Pair","Pair",3379.93,4550.44],
+    ["MW Antenna 1.8m Alignment, per Pair","Pair",4506.57,6067.25],
+    ["New MW Install+Commission 2xAnt 0.3-0.6m, per Hop","Hop",8506.88,11260.10],
+    ["New MW Install+Commission 2xAnt 0.9-1.2m, per Hop","Hop",10153.84,13609.02],
+    ["New MW Install+Commission 2xAnt 1.8m, per Hop","Hop",12180.80,16337.94],
+    ["Swap MW+Install+Commission 2xAnt 0.3-0.6m, per Hop","Hop",10883.46,14293.60],
+    ["MW ODU Dismantling with Accessories, per Hop","Hop",797.62,1073.85],
+    ["MW Dismantling 2xAnt max 0.6m, per Hop","Hop",2501.67,3193.16],
+  ],
+  "Microwave (ZTE)":[
+    ["MW Survey, per Hop","Hop",2823.82,2823.82],
+    ["MW Trunk Install (10+0)XPIC 0.7-1.2m, per Hop","Hop",13805.35,13805.35],
+    ["MW Trunk Install (10+0)XPIC 1.3-2.0m, per Hop","Hop",18825.47,18825.47],
+    ["MW Trunk Install (12+0)XPIC 0.7-1.2m, per Hop","Hop",15908.00,15908.00],
+    ["MW EMS Client Installation, per Set","Set",1162.07,1162.07],
+    ["MW ODU/AOU Installation, per Set","Set",1149.45,1149.45],
+    ["MW IF Cable Installation, per Set","Set",1144.60,1144.60],
+    ["MW Hardware Cutover, per Hop","Hop",4423.20,4423.20],
+    ["MW Software Commission, per Hop","Hop",2782.25,2782.25],
+    ["MW Dismantling 0.7-1.2m 2 Antennas, per Hop","Hop",5180.77,5180.77],
+    ["IPRAN Low-end Box Installation, per Pcs","Pcs",1978.80,1978.80],
+  ],
+  "Transportation":[
+    ["Transport 1.5-ton Distance max 100km, per Trip","Trip",4246.27,4246.27],
+    ["Transport 1.5-ton Distance 100-200km, per Trip","Trip",7187.70,7187.70],
+    ["Transport 1.5-ton Distance 200-300km, per Trip","Trip",10836.84,10836.84],
+    ["Transport 1.5-ton Distance 300-400km, per Trip","Trip",12495.54,12495.54],
+    ["Transport 1.5-ton Distance 400-500km, per Trip","Trip",13601.34,13601.34],
+    ["Transport 1.5-ton Distance 500-750km, per Trip","Trip",15879.29,15879.29],
+    ["Transport 1.5-ton Distance 750-1000km, per Trip","Trip",22558.32,22558.32],
+    ["Transport 1.5-ton Distance above 1000km, per Trip","Trip",25322.82,25322.82],
+  ],
+};
+
+const DEFAULT_SCOPES = [
+  {ref:"§3.1",label:"Site Review & Validation",cats:["Survey"]},
+  {ref:"§3.2",label:"Power System Verification",cats:["Power","Passive/Feeder"]},
+  {ref:"§3.4",label:"Fabrication & Mounting",cats:["Antenna"]},
+  {ref:"§3.5",label:"RAN Equipment Installation",cats:["BBU","RRU/AAU","Antenna"]},
+  {ref:"§3.6-HW",label:"Microwave Backhaul (Option A)",cats:["Microwave (HW)"]},
+  {ref:"§3.6-ZTE",label:"Microwave Backhaul (Option B)",cats:["Microwave (ZTE)"]},
+  {ref:"§3.7",label:"Integration & Commissioning",cats:["OSS/Integration"]},
+  {ref:"§3.8",label:"Testing & Acceptance",cats:["RF Test"]},
+  {ref:"§3.10",label:"Documentation & Handover",cats:["Survey"]},
+  {ref:"§Trans",label:"Transportation",cats:["Transportation"]},
+];
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let BOQ = JSON.parse(localStorage.getItem('boq')||'null') || JSON.parse(JSON.stringify(DEFAULT_BOQ));
+let quotations = JSON.parse(localStorage.getItem('quotations')||'[]');
+let activeQ = null;  // current quotation being edited
+let activeSiteIdx = 0;
+let rfpBase64 = null;
+
+function save() {
+  localStorage.setItem('quotations', JSON.stringify(quotations));
+  localStorage.setItem('boq', JSON.stringify(BOQ));
+}
+
+// ══════════════════════════════════════════
+// VIEWS
+// ══════════════════════════════════════════
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tnav').forEach(b=>b.classList.remove('active'));
+  if(name !== 'editor' && name !== 'summary') {
+    document.getElementById('tnav_summary').style.display = 'none';
+  }
+  document.getElementById('view_'+name).classList.add('active');
+  const idx = ['quotes','boq','settings'].indexOf(name);
+  if(idx>=0) document.querySelectorAll('.tnav')[idx].classList.add('active');
+  if(name==='quotes') renderQuotesList();
+  if(name==='boq') renderBOQ();
+}
+
+// ══════════════════════════════════════════
+// QUOTATION CRUD
+// ══════════════════════════════════════════
+function newQuote() {
+  const q = {
+    id: Date.now().toString(),
+    name: 'New Quotation',
+    client:'', ref:'', date: new Date().toISOString().slice(0,10),
+    validity:30, project:'', vat:16, status:'draft',
+    sites:[],
+    scopes: JSON.parse(JSON.stringify(DEFAULT_SCOPES)).map(s=>({
+      ...s, items:[]  // start empty
+    })),
+    created: new Date().toISOString(),
+    updated: new Date().toISOString(),
+  };
+  quotations.unshift(q);
+  save();
+  openEditor(q.id);
+}
+
+function openEditor(id) {
+  activeQ = quotations.find(q=>q.id===id);
+  if(!activeQ) return;
+  activeSiteIdx = 0;
+  rfpBase64 = null;
+  document.getElementById('tnav_summary').style.display = 'inline-flex';
+
+  // Populate fields
+  document.getElementById('f_client').value = activeQ.client||'';
+  document.getElementById('f_ref').value = activeQ.ref||'';
+  document.getElementById('f_date').value = activeQ.date||'';
+  document.getElementById('f_validity').value = activeQ.validity||30;
+  document.getElementById('f_project').value = activeQ.project||'';
+  document.getElementById('f_vat').value = activeQ.vat||16;
+  document.getElementById('f_status').value = activeQ.status||'draft';
+  document.getElementById('editor_title').textContent = activeQ.name||'New Quotation';
+  document.getElementById('btn_analyze').disabled = true;
+  document.getElementById('ai_response').classList.remove('show');
+  document.getElementById('rfp_name').style.display='none';
+
+  renderSitesTable();
+  renderSiteTabs();
+  renderScopes();
+  updateTotals();
+  renderSidebar();
+  showView('editor');
+}
+
+function saveQuote() {
+  if(!activeQ) return;
+  activeQ.client = document.getElementById('f_client').value;
+  activeQ.ref    = document.getElementById('f_ref').value;
+  activeQ.date   = document.getElementById('f_date').value;
+  activeQ.validity = +document.getElementById('f_validity').value;
+  activeQ.project = document.getElementById('f_project').value;
+  activeQ.vat    = +document.getElementById('f_vat').value;
+  activeQ.status = document.getElementById('f_status').value;
+  activeQ.name   = activeQ.client
+    ? `${activeQ.client}${activeQ.ref?' — '+activeQ.ref:''}`
+    : (activeQ.project||'New Quotation');
+  activeQ.updated = new Date().toISOString();
+  document.getElementById('editor_title').textContent = activeQ.name;
+  save();
+  renderSidebar();
+  // Cloud save (non-blocking)
+  if(SB) saveToCloud(activeQ).then(ok => {
+    if(ok) document.getElementById('editor_title').title = 'Saved to cloud ✓';
+  });
+  toast('Saved ✓','ok');
+}
+
+function markDone() {
+  if(!activeQ) return;
+  activeQ.status = 'done';
+  document.getElementById('f_status').value = 'done';
+  saveQuote();
+}
+
+function deleteQuote(id, e) {
+  e.stopPropagation();
+  if(!confirm('Delete this quotation?')) return;
+  const toDelete = id;
+  quotations = quotations.filter(q=>q.id!==id);
+  save();
+  if(SB) deleteFromCloud(toDelete);
+  if(activeQ?.id===toDelete) { activeQ=null; showView('quotes'); }
+  renderQuotesList(); renderSidebar();
+}
+
+// ══════════════════════════════════════════
+// RENDER QUOTES LIST
+// ══════════════════════════════════════════
+function renderQuotesList() {
+  const grid = document.getElementById('quotes_grid');
+  const empty = document.getElementById('quotes_empty');
+  if(!quotations.length) {
+    grid.style.display='none'; empty.style.display='flex'; return;
+  }
+  grid.style.display='grid'; empty.style.display='none';
+  grid.innerHTML = quotations.map(q=>{
+    const sub = calcSubtotal(q);
+    const vat = sub*(q.vat||16)/100;
+    return `
+    <div class="sq-card ${q.status==='done'?'done':''}" onclick="openEditor('${q.id}')">
+      <div class="sq-card-name">${q.name||'Untitled'}</div>
+      <div class="sq-card-meta">${q.client||'—'} · ${q.ref||'—'} · ${q.date||'—'}<br>${q.sites?.length||0} site(s)</div>
+      <div class="sq-card-total">ZMW ${fmt(sub+vat)}</div>
+      <div class="sq-card-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openEditor('${q.id}')">Edit</button>
+        <button class="btn btn-green btn-sm" onclick="exportExcelById('${q.id}',event)">Excel</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuote('${q.id}',event)">Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════
+function renderSidebar() {
+  document.getElementById('sidebar_list').innerHTML = quotations.map(q=>{
+    const sub = calcSubtotal(q);
+    const grand = sub*(1+(q.vat||16)/100);
+    return `
+    <div class="sq-item ${activeQ?.id===q.id?'active':''}" onclick="openEditor('${q.id}')">
+      <div class="sq-item-icon">${q.status==='done'?'✅':'📝'}</div>
+      <div class="sq-item-info">
+        <div class="sq-item-name">${q.name||'Untitled'}</div>
+        <div class="sq-item-meta">${q.sites?.length||0} sites · ZMW ${fmt(grand)}</div>
+      </div>
+      <div class="sq-item-badge ${q.status==='done'?'badge-done':'badge-draft'}">${q.status}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// SITES
+// ══════════════════════════════════════════
+function renderSitesTable() {
+  const c = document.getElementById('sites_table');
+  if(!activeQ.sites.length) {
+    c.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:12px 0">No sites added. Click "+ Add Site" or upload a CSV/Excel file.</div>`;
+    return;
+  }
+  c.innerHTML=`
+  <div style="display:grid;grid-template-columns:1fr 1fr 100px 160px 34px;gap:8px;margin-bottom:6px;padding:0 2px">
+    ${['Site Name','Province','KM','Location',''].map(h=>`<span style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${h}</span>`).join('')}
+  </div>
+  ${activeQ.sites.map((s,i)=>`
+  <div style="display:grid;grid-template-columns:1fr 1fr 100px 160px 34px;gap:8px;margin-bottom:6px">
+    <input style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;width:100%" value="${s.name}" oninput="activeQ.sites[${i}].name=this.value;renderSiteTabs()">
+    <input style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;width:100%" value="${s.province}" oninput="activeQ.sites[${i}].province=this.value">
+    <input type="number" style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:var(--mono);font-size:13px;color:var(--sky);outline:none;width:100%;text-align:center" value="${s.km}" oninput="activeQ.sites[${i}].km=+this.value;autoTransport(${i})">
+    <select style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;width:100%;cursor:pointer" onchange="activeQ.sites[${i}].loc=this.value;renderScopes()">
+      <option ${s.loc==='Out of Lusaka'?'selected':''}>Out of Lusaka</option>
+      <option ${s.loc==='In Lusaka (Capital)'?'selected':''}>In Lusaka (Capital)</option>
+    </select>
+    <button class="btn-del-item" onclick="removeSite(${i})">✕</button>
+  </div>`).join('')}`;
+}
+
+function addSite() { document.getElementById('modal_site').classList.add('show'); }
+
+function confirmAddSite() {
+  const name=document.getElementById('ms_name').value.trim();
+  if(!name){toast('Site name required','err');return;}
+  activeQ.sites.push({
+    name, province:document.getElementById('ms_prov').value,
+    km:+document.getElementById('ms_km').value,
+    loc:document.getElementById('ms_loc').value
+  });
+  closeModal('modal_site');
+  document.getElementById('ms_name').value='';
+  document.getElementById('ms_prov').value='';
+  document.getElementById('ms_km').value='0';
+  renderSitesTable(); renderSiteTabs(); renderScopes(); updateTotals();
+}
+
+function removeSite(i) {
+  activeQ.sites.splice(i,1);
+  if(activeSiteIdx>=activeQ.sites.length) activeSiteIdx=Math.max(0,activeQ.sites.length-1);
+  renderSitesTable(); renderSiteTabs(); renderScopes(); updateTotals();
+}
+
+function autoTransport(sIdx) {
+  // Rebuild transport section item for this specific site index
+  const site = activeQ.sites[sIdx];
+  if(!site) return;
+  const km = site.km || 0;
+  const bands = [
+    [100,  'Transport 1.5-ton Distance max 100km, per Trip'],
+    [200,  'Transport 1.5-ton Distance 100-200km, per Trip'],
+    [300,  'Transport 1.5-ton Distance 200-300km, per Trip'],
+    [400,  'Transport 1.5-ton Distance 300-400km, per Trip'],
+    [500,  'Transport 1.5-ton Distance 400-500km, per Trip'],
+    [750,  'Transport 1.5-ton Distance 500-750km, per Trip'],
+    [1000, 'Transport 1.5-ton Distance 750-1000km, per Trip'],
+    [Infinity, 'Transport 1.5-ton Distance above 1000km, per Trip'],
+  ];
+  const [,desc] = bands.find(([mx])=>km<=mx) || bands[bands.length-1];
+
+  let transSec = activeQ.scopes.find(s=>s.ref==='§Trans');
+  if(!transSec) {
+    transSec = {ref:'§Trans', label:'Transportation', cats:['Transportation'], items:[], collapsed:false};
+    activeQ.scopes.push(transSec);
+  }
+
+  // Ensure we have an item slot for each site
+  while(transSec.items.length <= sIdx) {
+    transSec.items.push({desc:'', qty:1});
+  }
+  transSec.items[sIdx] = {desc, qty:1, aiSuggested:true, siteNote:`${site.name} (${km} km)`};
+
+  renderScopes(); updateTotals();
+}
+
+// ══════════════════════════════════════════
+// KM FILE UPLOAD
+// ══════════════════════════════════════════
+function handleKMFile(input) {
+  const file = input.files[0]; if(!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(ext==='csv') {
+    const reader = new FileReader();
+    reader.onload = e => parseKMCSV(e.target.result);
+    reader.readAsText(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws,{header:1});
+      parseKMRows(rows);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+function parseKMCSV(text) {
+  const rows = text.split('\n').map(r=>r.split(',').map(c=>c.trim().replace(/"/g,'')));
+  parseKMRows(rows);
+}
+
+function parseKMRows(rows) {
+  let added=0;
+  rows.forEach((row,i)=>{
+    if(i===0) return; // skip header
+    const name=row[0]?.toString().trim();
+    const km=parseFloat(row[1]||row[2]||0);
+    const province=row[2]?.toString().trim()||row[3]?.toString().trim()||'';
+    if(!name||isNaN(km)) return;
+    // Update existing or add new
+    const existing = activeQ.sites.find(s=>s.name.toLowerCase()===name.toLowerCase());
+    if(existing) { existing.km=km; if(province) existing.province=province; }
+    else { activeQ.sites.push({name,province,km,loc:'Out of Lusaka'}); added++; }
+    autoTransport(activeQ.sites.length-1);
+  });
+  renderSitesTable(); renderSiteTabs(); renderScopes(); updateTotals();
+  toast(`KM file loaded — ${added} new sites added, existing updated ✓`,'ok');
+}
+
+// ══════════════════════════════════════════
+// SITE TABS (for line items view)
+// ══════════════════════════════════════════
+function renderSiteTabs() {
+  const c = document.getElementById('site_tabs_line');
+  if(!activeQ.sites.length) {
+    c.innerHTML=`<span style="font-family:var(--mono);font-size:11px;color:var(--muted)">Add sites above to see per-site pricing</span>`;
+    return;
+  }
+  c.innerHTML = `<span style="font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center">Site:</span>`+
+    activeQ.sites.map((s,i)=>`
+    <button class="stab ${i===activeSiteIdx?'active':''}" onclick="setActiveSite(${i})">${s.name||'Site '+(i+1)}</button>`).join('')+
+    `<button class="stab-add" onclick="addSite()">＋</button>`;
+}
+
+function setActiveSite(i) { activeSiteIdx=i; renderScopes(); }
+
+// ══════════════════════════════════════════
+// SCOPE SECTIONS
+// ══════════════════════════════════════════
+function renderScopes() {
+  const c = document.getElementById('scope_sections');
+  if(!activeQ) return;
+  const site = activeQ.sites[activeSiteIdx];
+  const isOut = !site || site.loc==='Out of Lusaka';
+
+  c.innerHTML = activeQ.scopes.map((sec,si)=>{
+    const cats = sec.cats||[];
+    const allOpts = cats.flatMap(cat=>(BOQ[cat]||[]).map(r=>({cat,desc:r[0],unit:r[1]})));
+    const items = sec.items||[];
+    const secTotal = items.reduce((s,it)=>{
+      const p = it.priceOverride!==undefined ? it.priceOverride : (getPrice(it.desc,isOut)||0); return s+(p||0)*(it.qty||0);},0);
+
+    return `
+    <div class="scope-block ${sec.collapsed?'closed':''}" id="sb_${si}">
+      <div class="scope-head" onclick="toggleScope(${si})">
+        <span class="scope-ref">${sec.ref}</span>
+        <span class="scope-lbl">${sec.label}</span>
+        <span class="scope-cnt">${items.length} item${items.length!==1?'s':''} · ZMW ${fmt(secTotal)}</span>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 6px;margin-left:4px" onclick="removeScope(event,${si})">✕</button>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="scope-body">
+        <div class="item-hdr">
+          <span>Description</span><span>Unit</span><span>Unit Price</span><span>Total</span><span></span>
+        </div>
+        ${items.map((it,ii)=>{
+          const p = it.priceOverride!==undefined ? it.priceOverride : (getPrice(it.desc,isOut)||0);
+          const tot=p*(it.qty||0);
+          const noteHtml = it.siteNote ? `<div style="grid-column:1/-1;font-family:var(--mono);font-size:10px;color:var(--muted);padding:1px 0 4px 2px">↳ ${it.siteNote}</div>` : "";
+          const unitVal = it.unitOverride!==undefined ? it.unitOverride : (getUnit(it.desc)||'');
+          const priceVal = it.priceOverride!==undefined ? it.priceOverride : (p||0);
+          const priceBorder = it.priceOverride!==undefined ? 'border:1px solid #f59e0b' : 'border:1px solid var(--border)';
+          const priceColor = it.priceOverride!==undefined ? 'color:#f59e0b' : (p ? 'color:var(--sky)' : 'color:var(--muted)');
+          const resetDisplay = it.priceOverride!==undefined ? 'flex' : 'none';
+          return `
+          <div style="display:grid;grid-template-columns:1fr 70px 110px 110px 34px 30px;gap:6px;margin-bottom:8px;align-items:center">
+            ${noteHtml}
+            <select style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:var(--font);font-size:13px;color:var(--text);outline:none;width:100%;cursor:pointer" onchange="updateDesc(${si},${ii},this.value)">
+              <option value="">— select item —</option>
+              ${cats.map(cat=>`<optgroup label="${cat}">${(BOQ[cat]||[]).map(r=>`<option value="${r[0]}" ${it.desc===r[0]?"selected":""}>${r[0]}</option>`).join("")}</optgroup>`).join("")}
+            </select>
+            <input type="text" value="${unitVal}" style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 6px;color:var(--muted);font-size:12px;text-align:center;outline:none;width:100%;cursor:text" title="Edit unit" oninput="updateUnit(${si},${ii},this.value)">
+            <input type="number" value="${priceVal}" step="0.01" min="0" style="background:var(--inp);${priceBorder};border-radius:6px;padding:7px 6px;font-family:var(--mono);font-size:12px;${priceColor};text-align:right;outline:none;width:100%" title="Edit price (amber = overridden)" oninput="updatePrice(${si},${ii},+this.value)">
+            <input type="number" value="${it.qty||1}" min="0" style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:7px 6px;font-family:var(--mono);font-size:13px;color:var(--text);text-align:center;outline:none;width:100%" oninput="updateQty(${si},${ii},+this.value)">
+            <button style="background:none;border:1px solid var(--border);border-radius:6px;width:34px;height:36px;cursor:pointer;color:var(--muted);font-size:14px;transition:.12s" onclick="removeItem(${si},${ii})" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">✕</button>
+            <button style="background:none;border:1px solid var(--border);border-radius:6px;width:30px;height:36px;cursor:pointer;color:var(--muted);font-size:11px;transition:.12s;display:${resetDisplay};align-items:center;justify-content:center" title="Reset to BOQ price" onclick="resetPrice(${si},${ii})">&#8635;</button>
+          </div>`;
+        }).join('')}
+        <button class="btn-add-row" onclick="addItem(${si})">＋ Add item</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+function updateUnit(si, ii, val) {
+  activeQ.scopes[si].items[ii].unitOverride = val;
+}
+function updatePrice(si, ii, val) {
+  activeQ.scopes[si].items[ii].priceOverride = val >= 0 ? val : undefined;
+  updateTotals();
+}
+function resetPrice(si, ii) {
+  delete activeQ.scopes[si].items[ii].priceOverride;
+  delete activeQ.scopes[si].items[ii].unitOverride;
+  renderScopes(); updateTotals();
+}
+
+function toggleScope(si) {
+  activeQ.scopes[si].collapsed=!activeQ.scopes[si].collapsed;
+  renderScopes();
+}
+function removeScope(e,si) {
+  e.stopPropagation();
+  if(!confirm('Remove this scope section?')) return;
+  activeQ.scopes.splice(si,1);
+  renderScopes(); updateTotals();
+}
+function updateDesc(si,ii,val) {
+  activeQ.scopes[si].items[ii].desc=val;
+  renderScopes(); updateTotals();
+}
+function updateQty(si,ii,val) {
+  activeQ.scopes[si].items[ii].qty=val;
+  updateTotals();
+}
+function addItem(si) {
+  if(!activeQ.scopes[si].items) activeQ.scopes[si].items=[];
+  activeQ.scopes[si].items.push({desc:'',qty:1});
+  renderScopes();
+}
+function removeItem(si,ii) {
+  activeQ.scopes[si].items.splice(ii,1);
+  renderScopes(); updateTotals();
+}
+
+// ══════════════════════════════════════════
+// ADD SCOPE SECTION
+// ══════════════════════════════════════════
+function addScope() {
+  const sel = document.getElementById('m_cat');
+  sel.innerHTML = Object.keys(BOQ).map(k=>`<option value="${k}">${k}</option>`).join('');
+  document.getElementById('modal_scope').classList.add('show');
+}
+function confirmAddScope() {
+  const ref=document.getElementById('m_ref').value.trim();
+  const label=document.getElementById('m_label').value.trim();
+  const cat=document.getElementById('m_cat').value;
+  if(!ref||!label){toast('Fill all fields','err');return;}
+  activeQ.scopes.push({ref,label,cats:[cat],items:[],collapsed:false});
+  closeModal('modal_scope');
+  renderScopes(); updateTotals();
+  toast('Scope section added ✓','ok');
+}
+
+// ══════════════════════════════════════════
+// PRICE LOOKUP
+// ══════════════════════════════════════════
+function getPrice(desc,isOut) {
+  for(const cat in BOQ){
+    const f=BOQ[cat].find(r=>r[0]===desc);
+    if(f) return isOut?f[3]:f[2];
+  }
+  return 0;
+}
+function getUnit(desc) {
+  for(const cat in BOQ){
+    const f=BOQ[cat].find(r=>r[0]===desc);
+    if(f) return f[1];
+  }
+  return '';
+}
+
+// ══════════════════════════════════════════
+// TOTALS
+// ══════════════════════════════════════════
+function calcSubtotal(q) {
+  let s=0;
+  (q.scopes||[]).forEach(sec=>{
+    (sec.items||[]).forEach(it=>{
+      // Use first site loc, or out-of-lusaka
+      const isOut = !q.sites?.[0] || q.sites[0].loc==='Out of Lusaka';
+      s+=(getPrice(it.desc,isOut)||0)*(it.qty||0);
+    });
+  });
+  return s;
+}
+
+function updateTotals() {
+  if(!activeQ) return;
+  let sub=0;
+  const site=activeQ.sites[activeSiteIdx];
+  const isOut=!site||site.loc==='Out of Lusaka';
+  activeQ.scopes.forEach(sec=>{
+    (sec.items||[]).forEach(it=>{
+      sub+=(getPrice(it.desc,isOut)||0)*(it.qty||0);
+    });
+  });
+  const vatRate=(activeQ.vat||16)/100;
+  const vat=sub*vatRate;
+  document.getElementById('t_sub').textContent=`ZMW ${fmt(sub)}`;
+  document.getElementById('t_vat_val').textContent=`ZMW ${fmt(vat)}`;
+  document.getElementById('t_grand').textContent=`ZMW ${fmt(sub+vat)}`;
+}
+
+// ══════════════════════════════════════════
+// RFP PDF UPLOAD
+// ══════════════════════════════════════════
+function handleRFPDrop(e) {
+  e.preventDefault();
+  document.getElementById('rfp_zone').classList.remove('drag');
+  const file=e.dataTransfer.files[0];
+  if(file) loadRFPFile(file);
+}
+function handleRFPFile(input) {
+  if(input.files[0]) loadRFPFile(input.files[0]);
+}
+function loadRFPFile(file) {
+  const reader=new FileReader();
+  reader.onload=e=>{
+    rfpBase64=e.target.result.split(',')[1];
+    document.getElementById('rfp_name').textContent='📄 '+file.name;
+    document.getElementById('rfp_name').style.display='block';
+    document.getElementById('btn_analyze').disabled=false;
+    toast('PDF loaded — click Analyze ✓','ok');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════════
+// AI ANALYZE (PDF or text)
+// ══════════════════════════════════════════
+// Build a full flat list of all BOQ items for the AI prompt
+function buildBOQPrompt() {
+  return Object.entries(BOQ).map(([cat,items])=>
+    items.map(r=>`[${cat}] ${r[0]} | unit: ${r[1]}`).join('\n')
+  ).join('\n');
+}
+
+// Build the shared AI instruction prompt
+function buildAIPrompt(boqList) {
+  return `You are a telecom BOQ expert for Zambia (iSAT Africa projects).
+
+Your job:
+1. Extract project info: client name, RFP reference number, project description.
+2. Extract ALL sites from any site list or appendix. For each site capture:
+   - name (exactly as written)
+   - province
+   - km (road distance from Lusaka in km — look for numbers near the site name, in a table column, or in coordinates context. If not found, set 0)
+   - loc: "Out of Lusaka" (default) or "In Lusaka (Capital)" only if explicitly in Lusaka city
+3. Map every scope section (§3.1, §3.2, §3.4, §3.5, §3.6, §3.7, §3.8, §3.10 etc.) to the BEST matching items from this BOQ list:
+${boqList}
+
+CRITICAL RULES:
+- Item "desc" values MUST be copied EXACTLY character-for-character from the BOQ list above. No paraphrasing.
+- For qty: use the number that makes sense (e.g. 3 antenna poles for 3-sector site, 2 antenna pcs for microwave hop).
+- For each scope section, suggest ALL relevant items, not just one.
+- For §Trans / Transportation: pick the ZTE Transport item matching the site km range (e.g. if km=699 → "Transport 1.5-ton Distance 500-750km, per Trip").
+- cats array must match one of these category names exactly: ${Object.keys(BOQ).join(', ')}
+
+Return ONLY valid JSON, no markdown, no explanation:
+{
+  "client": "string",
+  "ref": "string",
+  "project": "string",
+  "sites": [{"name":"string","province":"string","km":number,"loc":"Out of Lusaka"}],
+  "summary": "2-3 sentence project summary",
+  "scopes": [
+    {
+      "ref": "§3.1",
+      "label": "Site Review & Validation",
+      "cats": ["Survey"],
+      "items": [{"desc":"exact BOQ item name","qty":1}]
+    }
+  ]
+}`;
+}
+
+async function analyzeRFP() {
+  if(!rfpBase64){toast('No PDF loaded','err');return;}
+  const btn=document.getElementById('btn_analyze');
+  btn.classList.add('loading');
+  btn.textContent='⟳ Analyzing PDF...';
+  showProgress(20);
+
+  const boqList = buildBOQPrompt();
+  const prompt  = buildAIPrompt(boqList);
+
+  try {
+    showProgress(50);
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:4000,
+        messages:[{role:"user",content:[
+          {type:"document",source:{type:"base64",media_type:"application/pdf",data:rfpBase64}},
+          {type:"text",text:prompt}
+        ]}]
+      })
+    });
+    showProgress(80);
+    const data=await res.json();
+    const text=data.content?.[0]?.text||'';
+    applyAIResult(text,'PDF');
+  } catch(e){
+    toast('AI error: '+e.message,'err');
+  } finally {
+    btn.classList.remove('loading');
+    btn.textContent='✦ Analyze PDF & Auto-Fill';
+    showProgress(100);
+    setTimeout(()=>{document.getElementById('ai_prog_wrap').style.display='none';},600);
+  }
+}
+
+async function analyzeText() {
+  const text=document.getElementById('rfp_text').value.trim();
+  if(!text){toast('Paste RFP text first','err');return;}
+  const btn=document.querySelector('[onclick="analyzeText()"]');
+  btn.classList.add('loading');
+  btn.textContent='⟳ Analyzing...';
+
+  const boqList = buildBOQPrompt();
+  const prompt  = buildAIPrompt(boqList);
+
+  try {
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:4000,
+        messages:[{role:"user",content:
+          `Analyze this RFP text and follow all instructions below.\n\nRFP TEXT:\n---\n${text}\n---\n\n${prompt}`
+        }]
+      })
+    });
+    const data=await res.json();
+    const txt=data.content?.[0]?.text||'';
+    applyAIResult(txt,'text');
+  } catch(e){
+    toast('AI error: '+e.message,'err');
+  } finally {
+    btn.classList.remove('loading');
+    btn.textContent='✦ Analyze Text';
+  }
+}
+
+function applyAIResult(raw, src) {
+  // Strip markdown code fences if present
+  let cleaned = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+
+  let json;
+  try {
+    const match = cleaned.match(/\{[\s\S]+\}/);
+    json = JSON.parse(match ? match[0] : cleaned);
+  } catch(e) {
+    document.getElementById('ai_response_text').textContent = raw;
+    document.getElementById('ai_response').classList.add('show');
+    toast('AI responded but could not parse JSON — see analysis box below','err');
+    return;
+  }
+
+  let sitesAdded=0, sitesUpdated=0, itemsAdded=0;
+
+  // ── 1. Project fields ──────────────────────────────────────
+  if(json.client) {
+    document.getElementById('f_client').value = json.client;
+    activeQ.client = json.client;
+  }
+  if(json.ref) {
+    document.getElementById('f_ref').value = json.ref;
+    activeQ.ref = json.ref;
+  }
+  if(json.project) {
+    document.getElementById('f_project').value = json.project;
+    activeQ.project = json.project;
+  }
+
+  // ── 2. Sites — add new, update km/province on existing ────
+  if(json.sites?.length) {
+    json.sites.forEach(s => {
+      const name = (s.name||'').trim();
+      if(!name) return;
+      const km   = parseFloat(s.km)||0;
+      const prov = (s.province||'').trim();
+      const loc  = s.loc||'Out of Lusaka';
+      const existing = activeQ.sites.find(x =>
+        x.name.trim().toLowerCase() === name.toLowerCase()
+      );
+      if(existing) {
+        // Always update km if AI found one and current is 0
+        if(km>0) existing.km = km;
+        if(prov && !existing.province) existing.province = prov;
+        existing.loc = loc;
+        sitesUpdated++;
+      } else {
+        activeQ.sites.push({name, province:prov, km, loc});
+        sitesAdded++;
+      }
+    });
+  }
+
+  // ── 3. Scope sections & items ─────────────────────────────
+  if(json.scopes?.length) {
+    json.scopes.forEach(aiSec => {
+      const ref   = (aiSec.ref||'').trim();
+      const label = (aiSec.label||ref).trim();
+      if(!ref) return;
+
+      // Resolve cats — validate against BOQ, fall back to first matched
+      let cats = Array.isArray(aiSec.cats) ? aiSec.cats.filter(c=>BOQ[c]) : [];
+      if(!cats.length) {
+        // Try to infer category from items
+        const firstItem = aiSec.items?.[0]?.desc||'';
+        for(const cat in BOQ) {
+          if(BOQ[cat].find(r=>r[0]===firstItem)) { cats=[cat]; break; }
+        }
+        if(!cats.length) cats = [Object.keys(BOQ)[0]];
+      }
+
+      // Find or create the scope section
+      let sec = activeQ.scopes.find(s => s.ref === ref);
+      if(!sec) {
+        sec = {ref, label, cats, items:[], collapsed:false};
+        activeQ.scopes.push(sec);
+      } else {
+        // Ensure cats include new ones
+        cats.forEach(c=>{ if(!sec.cats.includes(c)) sec.cats.push(c); });
+      }
+
+      // Add items — only if desc exactly matches a BOQ entry
+      (aiSec.items||[]).forEach(it => {
+        const desc = (it.desc||'').trim();
+        if(!desc) return;
+        // Verify item exists in BOQ
+        const inBOQ = Object.values(BOQ).some(arr => arr.find(r=>r[0]===desc));
+        if(!inBOQ) return; // skip hallucinated items
+        // Don't duplicate
+        if(sec.items.find(x=>x.desc===desc)) return;
+        sec.items.push({desc, qty: parseInt(it.qty)||1, aiSuggested:true});
+        itemsAdded++;
+      });
+    });
+  }
+
+  // ── 4. Auto-assign transport band per site km ─────────────
+  // Find or create transport scope section
+  let transSec = activeQ.scopes.find(s=>s.ref==='§Trans');
+  if(!transSec) {
+    transSec = {ref:'§Trans', label:'Transportation', cats:['Transportation'], items:[], collapsed:false};
+    activeQ.scopes.push(transSec);
+  }
+
+  // Build one transport item per site (replace existing transport items entirely)
+  transSec.items = [];
+  activeQ.sites.forEach((site, si) => {
+    const km = site.km || 0;
+    const bands = [
+      [100,  'Transport 1.5-ton Distance max 100km, per Trip'],
+      [200,  'Transport 1.5-ton Distance 100-200km, per Trip'],
+      [300,  'Transport 1.5-ton Distance 200-300km, per Trip'],
+      [400,  'Transport 1.5-ton Distance 300-400km, per Trip'],
+      [500,  'Transport 1.5-ton Distance 400-500km, per Trip'],
+      [750,  'Transport 1.5-ton Distance 500-750km, per Trip'],
+      [1000, 'Transport 1.5-ton Distance 750-1000km, per Trip'],
+      [Infinity, 'Transport 1.5-ton Distance above 1000km, per Trip'],
+    ];
+    const [,desc] = bands.find(([mx])=>km<=mx) || bands[bands.length-1];
+    transSec.items.push({
+      desc,
+      qty: 1,
+      aiSuggested: true,
+      siteNote: `${site.name} (${km} km)`
+    });
+  });
+
+  // ── 5. Update quotation name ───────────────────────────────
+  const newName = [json.client, json.ref].filter(Boolean).join(' — ') || json.project || 'Quotation';
+  activeQ.name = newName;
+  document.getElementById('editor_title').textContent = newName;
+
+  // ── 6. Show AI summary banner ──────────────────────────────
+  const transportInfo = activeQ.sites.map(s=>`  • ${s.name}: ${s.km}km → transport band auto-set`).join('\n');
+  document.getElementById('ai_response_text').textContent =
+    `Summary: ${json.summary||'—'}\n\n` +
+    `Sites: ${sitesAdded} added, ${sitesUpdated} updated with km/province\n` +
+    `Line items: ${itemsAdded} added across ${json.scopes?.length||0} scope sections\n\n` +
+    `Transport assignments:\n${transportInfo||'  (no sites with km found)'}`;
+  document.getElementById('ai_response').classList.add('show');
+
+  // ── 7. Render everything ───────────────────────────────────
+  renderSitesTable();
+  renderSiteTabs();
+  renderScopes();
+  updateTotals();
+  saveQuote();
+  toast(`Auto-filled from ${src} — ${sitesAdded} sites, ${itemsAdded} items added ✓`,'ok');
+}
+
+function showProgress(pct) {
+  const w=document.getElementById('ai_prog_wrap');
+  const b=document.getElementById('ai_prog');
+  w.style.display='block'; b.style.width=pct+'%';
+}
+
+// ══════════════════════════════════════════
+// EXPORT EXCEL
+// ══════════════════════════════════════════
+function exportExcel() { exportExcelById(activeQ?.id); }
+
+function exportExcelById(id, e) {
+  if(e) e.stopPropagation();
+  const q=quotations.find(x=>x.id===id); if(!q) return;
+  const wb=XLSX.utils.book_new();
+
+  // Summary sheet
+  const summaryData=[
+    ['COMMERCIAL PROPOSAL'],[''],
+    ['Client:', q.client||''],['RFP Ref:', q.ref||''],
+    ['Project:', q.project||''],['Date:', q.date||''],
+    ['Validity:', (q.validity||30)+' days'],['VAT:', (q.vat||16)+'%'],
+    [''],['S/N','Scope Ref','Description','Unit','Qty','Unit Price (ZMW)','Total (ZMW)'],
+  ];
+  let sn=1;
+  let grandSub=0;
+  (q.scopes||[]).forEach(sec=>{
+    summaryData.push([`--- ${sec.ref} | ${sec.label} ---`,'','','','','','','']);
+    (sec.items||[]).forEach(it=>{
+      const isOut=!q.sites?.[0]||q.sites[0].loc==='Out of Lusaka';
+      const p=getPrice(it.desc,isOut)||0;
+      const tot=p*(it.qty||0);
+      grandSub+=tot;
+      // find source
+      let src='';
+      for(const cat in BOQ){if(BOQ[cat].find(r=>r[0]===it.desc)){src=cat;break;}}
+      summaryData.push([sn++,sec.ref,it.desc,getUnit(it.desc),it.qty||1,p,tot]);
+    });
+  });
+  const vat=grandSub*(q.vat||16)/100;
+  summaryData.push(['','','','','','','','']);
+  summaryData.push(['','','','','','SUBTOTAL',grandSub,'']);
+  summaryData.push(['','','','','','VAT ('+(q.vat||16)+'%)',vat,'']);
+  summaryData.push(['','','','','','GRAND TOTAL',grandSub+vat,'']);
+
+  const ws=XLSX.utils.aoa_to_sheet(summaryData);
+  ws['!cols']=[{wch:5},{wch:10},{wch:55},{wch:8},{wch:6},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Summary');
+
+  // Per-site sheets
+  if(q.sites?.length>1) {
+    q.sites.forEach((site,si)=>{
+      const isOut=site.loc==='Out of Lusaka';
+      const sData=[
+        [`Site: ${site.name}`],[`Province: ${site.province}`],[`Distance: ${site.km} km`],[`Location: ${site.loc}`],[''],
+        ['S/N','Scope Ref','Description','Unit','Qty','Unit Price (ZMW)','Total (ZMW)'],
+      ];
+      let siteSub=0, sn2=1;
+      (q.scopes||[]).forEach(sec=>{
+        sData.push([`--- ${sec.ref} | ${sec.label} ---`]);
+        (sec.items||[]).forEach(it=>{
+          const p=getPrice(it.desc,isOut)||0;
+          const tot=p*(it.qty||0);
+          siteSub+=tot;
+          sData.push([sn2++,sec.ref,it.desc,getUnit(it.desc),it.qty||1,p,tot]);
+        });
+      });
+      const sVat=siteSub*(q.vat||16)/100;
+      sData.push(['','','','','','SUBTOTAL',siteSub]);
+      sData.push(['','','','','','VAT',sVat]);
+      sData.push(['','','','','','GRAND TOTAL',siteSub+sVat]);
+      const ws2=XLSX.utils.aoa_to_sheet(sData);
+      ws2['!cols']=[{wch:5},{wch:10},{wch:55},{wch:8},{wch:6},{wch:16},{wch:16}];
+      XLSX.utils.book_append_sheet(wb,ws2,site.name.slice(0,30));
+    });
+  }
+
+  // Sites sheet
+  if(q.sites?.length) {
+    const sitesData=[['Site Name','Province','Distance (km)','Location'],
+      ...q.sites.map(s=>[s.name,s.province,s.km,s.loc])];
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sitesData),'Sites');
+  }
+
+  const fname=`${(q.name||'Quotation').replace(/[^a-z0-9]/gi,'_')}_${q.date||'2026'}.xlsx`;
+  XLSX.writeFile(wb,fname);
+  toast('Excel exported ✓','ok');
+}
+
+// ══════════════════════════════════════════
+// BOQ MANAGER
+// ══════════════════════════════════════════
+function renderBOQ() {
+  const c=document.getElementById('boq_content');
+  c.innerHTML=Object.entries(BOQ).map(([cat,items])=>`
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title" style="justify-content:space-between">
+      <div>${cat} <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">(${items.length} items)</span></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="addBOQItem('${cat}')">+ Item</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteBOQCat('${cat}')">Delete Category</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 60px 120px 120px 34px;gap:6px;margin-bottom:6px">
+      ${['Description','Unit','Capital (ZMW)','Out of Lusaka (ZMW)',''].map(h=>`<span style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase">${h}</span>`).join('')}
+    </div>
+    ${items.map((r,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 60px 120px 120px 34px;gap:6px;margin-bottom:6px">
+      <input style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;width:100%" value="${r[0]}" oninput="BOQ['${cat}'][${i}][0]=this.value;save()">
+      <input style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:6px 9px;color:var(--text);font-size:12px;outline:none;width:100%;text-align:center" value="${r[1]}" oninput="BOQ['${cat}'][${i}][1]=this.value;save()">
+      <input type="number" style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:6px 9px;color:var(--sky);font-family:var(--mono);font-size:12px;outline:none;width:100%;text-align:right" value="${r[2]}" oninput="BOQ['${cat}'][${i}][2]=+this.value;save()">
+      <input type="number" style="background:var(--inp);border:1px solid var(--border);border-radius:6px;padding:6px 9px;color:var(--sky);font-family:var(--mono);font-size:12px;outline:none;width:100%;text-align:right" value="${r[3]}" oninput="BOQ['${cat}'][${i}][3]=+this.value;save()">
+      <button class="btn-del-item" onclick="deleteBOQItem('${cat}',${i})">✕</button>
+    </div>`).join('')}
+  </div>`).join('');
+}
+
+function addBOQCategory() {
+  const name=prompt('Category name:');
+  if(!name) return;
+  if(BOQ[name]){toast('Category already exists','err');return;}
+  BOQ[name]=[];save();renderBOQ();
+}
+function addBOQItem(cat) {
+  BOQ[cat].push(['New Item','Site',0,0]);save();renderBOQ();
+}
+function deleteBOQItem(cat,i) {
+  BOQ[cat].splice(i,1);save();renderBOQ();
+}
+function deleteBOQCat(cat) {
+  if(!confirm(`Delete category "${cat}" and all its items?`)) return;
+  delete BOQ[cat];save();renderBOQ();
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+function exportAllData() {
+  const data=JSON.stringify({quotations,boq:BOQ},null,2);
+  const a=document.createElement('a');
+  a.href='data:application/json,'+encodeURIComponent(data);
+  a.download='quotebuilder_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  toast('Data exported ✓','ok');
+}
+function importData(input) {
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try {
+      const d=JSON.parse(e.target.result);
+      if(d.quotations) quotations=d.quotations;
+      if(d.boq) BOQ=d.boq;
+      save(); renderSidebar(); renderQuotesList(); renderBOQ();
+      toast('Data imported ✓','ok');
+    } catch(err){toast('Invalid file','err');}
+  };
+  reader.readAsText(input.files[0]);
+}
+function clearAllData() {
+  if(!confirm('Delete ALL quotations and reset BOQ to defaults? This cannot be undone.')) return;
+  quotations=[];
+  BOQ=JSON.parse(JSON.stringify(DEFAULT_BOQ));
+  activeQ=null; save();
+  renderSidebar(); showView('quotes');
+  toast('Data cleared','ok');
+}
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function fmt(n){return (+n||0).toLocaleString('en-ZM',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+(type||'');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='toast',3200);
+}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('show')}));
+
+
+// ══════════════════════════════════════════
+// SUMMARY VIEW
+// ══════════════════════════════════════════
+function openSummaryView() {
+  if(!activeQ) return;
+  renderSummary();
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tnav').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view_summary').classList.add('active');
+  document.getElementById('tnav_summary').classList.add('active');
+}
+
+function renderSummary() {
+  const q = activeQ;
+  if(!q) return;
+
+  document.getElementById('sum_title').textContent = q.name || 'Summary';
+
+  // ── Project info bar
+  document.getElementById('sum_info').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      ${[['Client', q.client||'—'],['RFP Ref', q.ref||'—'],['Date', q.date||'—'],['Validity', (q.validity||30)+' days']].map(([l,v])=>`
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">${l}</div>
+          <div style="font-size:14px;font-weight:700">${v}</div>
+        </div>`).join('')}
+    </div>
+    ${q.project ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);color:var(--muted);font-size:13px">${q.project}</div>` : ''}`;
+
+  // ── Per-site tables
+  const sitesEl = document.getElementById('sum_sites');
+
+  // If multiple sites — one table per site
+  if(q.sites && q.sites.length > 0) {
+    let allSitesHtml = '';
+    let projectSub = 0;
+
+    q.sites.forEach((site, si) => {
+      const isOut = site.loc === 'Out of Lusaka';
+      let siteSub = 0;
+      let sn = 1;
+
+      let rowsHtml = '';
+      q.scopes.forEach(sec => {
+        const secItems = (sec.items || []).filter(it => it.desc);
+        if(!secItems.length) return;
+
+        let secTotal = 0;
+        const itemRows = secItems.map(it => {
+          const p = getPrice(it.desc, isOut) || 0;
+          const tot = p * (it.qty || 0);
+          secTotal += tot;
+          siteSub += tot;
+          return `<tr>
+            <td style="color:var(--muted);font-family:var(--mono);font-size:11px">${sn++}</td>
+            <td style="font-family:var(--mono);font-size:10px;color:var(--sky)">${sec.ref}</td>
+            <td style="max-width:340px">${it.desc}</td>
+            <td style="color:var(--muted)">${getUnit(it.desc)||'—'}</td>
+            <td>${it.qty||1}</td>
+            <td>${p ? fmt(p) : '—'}</td>
+            <td style="color:var(--text);font-weight:600">${tot ? fmt(tot) : '—'}</td>
+          </tr>`;
+        }).join('');
+
+        rowsHtml += `
+          <tr class="sum-sec-row">
+            <td colspan="7">${sec.ref} — ${sec.label} &nbsp;<span style="font-weight:400;color:var(--muted)">ZMW ${fmt(secTotal)}</span></td>
+          </tr>
+          ${itemRows}`;
+      });
+
+      if(!rowsHtml) return;
+      projectSub += siteSub;
+      const siteVat = siteSub * (q.vat||16) / 100;
+
+      allSitesHtml += `
+        <div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <span style="font-family:var(--display);font-weight:700;font-size:15px">${site.name}</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:10px">${site.province || ''} · ${site.km||0} km · ${site.loc}</span>
+            </div>
+            <div style="font-family:var(--mono);font-size:13px;color:var(--amber)">ZMW ${fmt(siteSub * (1+(q.vat||16)/100))}</div>
+          </div>
+          <table class="sum-table">
+            <thead><tr>
+              <th style="width:40px">S/N</th>
+              <th style="width:60px">Scope</th>
+              <th>Description</th>
+              <th style="width:60px">Unit</th>
+              <th style="width:50px">Qty</th>
+              <th style="width:110px">Unit Price</th>
+              <th style="width:110px">Total</th>
+            </tr></thead>
+            <tbody>
+              ${rowsHtml}
+              <tr class="sum-total-row" style="border-top:2px solid var(--border)">
+                <td colspan="5"></td>
+                <td>Subtotal</td><td>ZMW ${fmt(siteSub)}</td>
+              </tr>
+              <tr class="sum-total-row" style="color:var(--muted)">
+                <td colspan="5"></td>
+                <td>VAT ${q.vat||16}%</td><td>ZMW ${fmt(siteVat)}</td>
+              </tr>
+              <tr class="sum-total-row" style="color:var(--amber);font-size:14px">
+                <td colspan="5"></td>
+                <td>Grand Total</td><td>ZMW ${fmt(siteSub+siteVat)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>`;
+    });
+
+    // If no items across all sites, fall back to flat view
+    sitesEl.innerHTML = allSitesHtml || renderFlatSummary(q);
+
+    // Grand total across all sites
+    const projVat = projectSub * (q.vat||16) / 100;
+    document.getElementById('sum_grand').innerHTML = `
+      <div style="font-family:var(--display);font-weight:700;font-size:14px;margin-bottom:14px">Project Total — All ${q.sites.length} Sites</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px">
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Subtotal (VAT Excl.)</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:600">ZMW ${fmt(projectSub)}</div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">VAT (${q.vat||16}%)</div>
+          <div style="font-family:var(--mono);font-size:18px;font-weight:600">ZMW ${fmt(projVat)}</div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px">Grand Total (VAT Incl.)</div>
+          <div style="font-family:var(--mono);font-size:24px;font-weight:800;color:var(--amber)">ZMW ${fmt(projectSub+projVat)}</div>
+        </div>
+      </div>`;
+
+  } else {
+    // No sites — flat single table
+    sitesEl.innerHTML = renderFlatSummary(q);
+  }
+}
+
+function renderFlatSummary(q) {
+  const isOut = q.sites?.[0]?.loc === 'Out of Lusaka';
+  let sub = 0, sn = 1;
+  let rows = '';
+
+  q.scopes.forEach(sec => {
+    const secItems = (sec.items||[]).filter(it=>it.desc);
+    if(!secItems.length) return;
+    let secSub = 0;
+    const itemRows = secItems.map(it => {
+      const p = getPrice(it.desc, isOut)||0;
+      const tot = p*(it.qty||0);
+      secSub += tot; sub += tot;
+      return `<tr>
+        <td style="color:var(--muted);font-family:var(--mono);font-size:11px">${sn++}</td>
+        <td style="font-family:var(--mono);font-size:10px;color:var(--sky)">${sec.ref}</td>
+        <td>${it.desc}</td>
+        <td style="color:var(--muted)">${getUnit(it.desc)||'—'}</td>
+        <td>${it.qty||1}</td>
+        <td>${p?fmt(p):'—'}</td>
+        <td style="font-weight:600">${tot?fmt(tot):'—'}</td>
+      </tr>`;
+    }).join('');
+    rows += `<tr class="sum-sec-row"><td colspan="7">${sec.ref} — ${sec.label} &nbsp;<span style="font-weight:400;color:var(--muted)">ZMW ${fmt(secSub)}</span></td></tr>${itemRows}`;
+  });
+
+  const vat = sub*(q.vat||16)/100;
+  return `<div class="card"><table class="sum-table">
+    <thead><tr>
+      <th style="width:40px">S/N</th><th style="width:60px">Scope</th>
+      <th>Description</th><th style="width:60px">Unit</th>
+      <th style="width:50px">Qty</th><th style="width:110px">Unit Price</th><th style="width:110px">Total</th>
+    </tr></thead>
+    <tbody>
+      ${rows}
+      <tr class="sum-total-row"><td colspan="5"></td><td>Subtotal</td><td>ZMW ${fmt(sub)}</td></tr>
+      <tr class="sum-total-row" style="color:var(--muted)"><td colspan="5"></td><td>VAT ${q.vat||16}%</td><td>ZMW ${fmt(vat)}</td></tr>
+      <tr class="sum-total-row" style="color:var(--amber);font-size:14px"><td colspan="5"></td><td>Grand Total</td><td>ZMW ${fmt(sub+vat)}</td></tr>
+    </tbody>
+  </table></div>`;
+}
+
+
+
+// ══════════════════════════════════════════
+// SUPABASE INTEGRATION — pure fetch(), no SDK
+// ══════════════════════════════════════════
+let SB_URL = '';
+let SB_KEY = '';
+
+function getSBCreds() {
+  SB_URL = (localStorage.getItem('sb_url') || '').replace(/\/$/, '');
+  SB_KEY  = localStorage.getItem('sb_key') || '';
+  return SB_URL && SB_KEY;
+}
+
+function setSyncDot(state) {
+  const dot = document.getElementById('sync_dot');
+  if(!dot) return;
+  const colors = { connected:'#22c55e', syncing:'#f59e0b', error:'#ef4444', off:'#6b7694' };
+  dot.style.background = colors[state] || colors.off;
+  dot.title = { connected:'Cloud connected', syncing:'Syncing…', error:'Sync error', off:'Not connected' }[state] || 'Not connected';
+}
+
+function sbLog(msg) {
+  const el = document.getElementById('sb_log');
+  if(!el) return;
+  const time = new Date().toLocaleTimeString();
+  el.innerHTML = `<div>[${time}] ${msg}</div>` + el.innerHTML;
+}
+
+function setSBStatus(msg, color='var(--muted)') {
+  const el = document.getElementById('sb_status');
+  if(el) { el.textContent = msg; el.style.color = color; }
+}
+
+// Core fetch wrapper for Supabase REST API
+async function sbFetch(method, path, body=null) {
+  if(!getSBCreds()) throw new Error('No credentials');
+  const opts = {
+    method,
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method === 'POST' ? 'resolution=merge-duplicates' : '',
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, opts);
+  const text = await res.text();
+  if(!res.ok) throw new Error(text || `HTTP ${res.status}`);
+  return text ? JSON.parse(text) : null;
+}
+
+async function initSupabase(showFeedback=false) {
+  if(!getSBCreds()) {
+    setSyncDot('off');
+    if(showFeedback) toast('Enter Supabase URL and key in Settings', 'err');
+    return false;
+  }
+  try {
+    // Test with a lightweight query
+    await sbFetch('GET', 'quotations?select=id&limit=1');
+    setSyncDot('connected');
+    setSBStatus('✓ Connected', 'var(--green)');
+    sbLog('Connected to Supabase');
+    if(showFeedback) toast('Supabase connected ✓', 'ok');
+    return true;
+  } catch(e) {
+    setSyncDot('error');
+    setSBStatus('✗ ' + (e.message || 'Failed'), 'var(--red)');
+    sbLog('Error: ' + e.message);
+    if(showFeedback) toast('Connection failed: ' + e.message, 'err');
+    return false;
+  }
+}
+
+async function saveToCloud(q) {
+  if(!getSBCreds()) return false;
+  setSyncDot('syncing');
+  try {
+    await sbFetch('POST', 'quotations', {
+      id: q.id,
+      name: q.name || 'Untitled',
+      data: q,
+      updated_at: new Date().toISOString()
+    });
+    setSyncDot('connected');
+    sbLog('Saved: "' + (q.name||'Untitled') + '"');
+    return true;
+  } catch(e) {
+    setSyncDot('error');
+    sbLog('Save error: ' + e.message);
+    return false;
+  }
+}
+
+async function deleteFromCloud(id) {
+  if(!getSBCreds()) return;
+  try {
+    await sbFetch('DELETE', `quotations?id=eq.${id}`);
+    sbLog('Deleted from cloud: ' + id);
+  } catch(e) {
+    sbLog('Delete error: ' + e.message);
+  }
+}
+
+async function syncAll() {
+  if(!(await initSupabase(true))) return;
+  setSyncDot('syncing');
+  let ok=0, fail=0;
+  for(const q of quotations) {
+    const res = await saveToCloud(q);
+    res ? ok++ : fail++;
+  }
+  setSyncDot(fail ? 'error' : 'connected');
+  const msg = `Synced ${ok} quotation${ok!==1?'s':''}${fail ? `, ${fail} failed` : ''}`;
+  sbLog(msg);
+  toast(msg, fail ? 'err' : 'ok');
+}
+
+async function pullFromCloud() {
+  if(!(await initSupabase(true))) return;
+  setSyncDot('syncing');
+  try {
+    const rows = await sbFetch('GET', 'quotations?select=id,name,data,updated_at&order=updated_at.desc');
+    if(!rows || !rows.length) {
+      setSyncDot('connected');
+      sbLog('No data found in cloud');
+      toast('Nothing to pull', 'ok');
+      return;
+    }
+    let added=0, updated=0;
+    rows.forEach(row => {
+      const q = row.data;
+      if(!q || !q.id) return;
+      const idx = quotations.findIndex(x => x.id === q.id);
+      if(idx === -1) { quotations.push(q); added++; }
+      else {
+        const cloudNewer = new Date(row.updated_at) > new Date(quotations[idx].updated || 0);
+        if(cloudNewer) { quotations[idx] = q; updated++; }
+      }
+    });
+    save();
+    renderSidebar();
+    renderQuotesList();
+    setSyncDot('connected');
+    const msg = `Pulled ${rows.length} from cloud — ${added} new, ${updated} updated`;
+    sbLog(msg);
+    toast(msg, 'ok');
+  } catch(e) {
+    setSyncDot('error');
+    sbLog('Pull error: ' + e.message);
+    toast('Pull failed: ' + e.message, 'err');
+  }
+}
+
+
+// ── INIT ──
+document.getElementById('f_date').value = new Date().toISOString().slice(0,10);
+// Restore company chip
+const savedChip = localStorage.getItem('company_chip');
+if(savedChip) document.getElementById('company_chip').textContent = savedChip;
+
+// Restore Supabase credentials in settings fields
+const savedUrl = localStorage.getItem('sb_url');
+const savedKey = localStorage.getItem('sb_key');
+if(savedUrl && document.getElementById('s_sb_url')) document.getElementById('s_sb_url').value = savedUrl;
+if(savedKey && document.getElementById('s_sb_key')) document.getElementById('s_sb_key').value = savedKey;
+
+// Auto-connect if credentials exist
+if(savedUrl && savedKey) {
+  initSupabase().then(ok => {
+    if(ok) {
+      sbLog('Auto-connected on startup');
+      // Auto-pull on startup to get latest data
+      pullFromCloud();
+    }
+  });
+}
+renderSidebar();
+renderQuotesList();
+</script>
+</body>
+</html>
